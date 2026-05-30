@@ -1,0 +1,8 @@
+target/
+apache-maven-3.9.6/
+.git
+.gitignore
+.env
+*.md
+.idea/
+*.iml

@@ -1,6 +1,5 @@
 package com.pos.backend.controller;
 
-import com.pos.backend.model.User;
 import com.pos.backend.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,13 +17,20 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody Map<String, String> request) {
         try {
-            User user = authService.signup(
+            var user = authService.signup(
                 request.get("name"),
                 request.get("email"),
                 request.get("password")
             );
-            user.setPassword(null); // hide password
-            return ResponseEntity.ok(user);
+            // Return user data map without password (password is @JsonIgnore'd)
+            Map<String, Object> response = Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "role", user.getRole(),
+                "message", "Account created successfully"
+            );
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
@@ -33,11 +39,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         try {
-            User user = authService.login(
+            Map<String, Object> userData = authService.login(
                 request.get("email"),
                 request.get("password")
             );
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(userData);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

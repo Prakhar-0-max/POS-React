@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # ─── MySQL Database ───
+  mysql:
+    image: mysql:8.0
+    container_name: pos-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: posdb
+      MYSQL_USER: posuser
+      MYSQL_PASSWORD: password123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Spring Boot Backend ───
+  backend:
+    build: ./backend
+    container_name: pos-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/posdb?useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER: posuser
+      DB_PASS: password123
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      DDL_AUTO: update
+      SHOW_SQL: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── React Frontend (Nginx) ───
+  frontend:
+    build:
+      context: ./react-frontend
+      args:
+        VITE_API_URL: http://localhost:8080/api
+    container_name: pos-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

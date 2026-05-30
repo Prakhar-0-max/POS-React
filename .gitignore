@@ -1,0 +1,32 @@
+# ─── Backend ───
+backend/target/
+backend/.env
+backend/apache-maven-3.9.6/
+*.class
+*.jar
+*.war
+*.log
+
+# ─── Frontend ───
+react-frontend/node_modules/
+react-frontend/dist/
+react-frontend/.env
+react-frontend/.env.local
+
+# ─── IDE ───
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── Docker ───
+docker-compose.override.yml
+
+# ─── Environment files (never commit secrets) ───
+.env
+*.env.local

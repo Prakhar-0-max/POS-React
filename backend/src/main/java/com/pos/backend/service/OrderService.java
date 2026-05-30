@@ -5,9 +5,11 @@ import com.pos.backend.repository.OrderRepository;
 import com.pos.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class OrderService {
@@ -24,7 +26,8 @@ public class OrderService {
     @Autowired
     private CartService cartService;
 
-    public Order createOrder(Long userId, String paymentMethod, List<java.util.Map<String, Object>> items) {
+    @Transactional
+    public Order createOrder(Long userId, String paymentMethod, List<Map<String, Object>> items) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -39,34 +42,43 @@ public class OrderService {
         order.setPaymentMethod(paymentMethod);
 
         double totalAmount = 0;
-        for (java.util.Map<String, Object> itemReq : items) {
+        for (Map<String, Object> itemReq : items) {
             Long productId = Long.valueOf(itemReq.get("id").toString());
             Integer quantity = Integer.valueOf(itemReq.get("quantity").toString());
             
             Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            // Validate stock availability
+            if (product.getStock() == null || product.getStock() < quantity) {
+                throw new RuntimeException(
+                    "Insufficient stock for product: " + product.getName() + 
+                    ". Available: " + (product.getStock() != null ? product.getStock() : 0) + 
+                    ", Requested: " + quantity
+                );
+            }
                 
             OrderItem orderItem = new OrderItem(order, product, quantity, product.getPrice());
             order.getItems().add(orderItem);
             totalAmount += orderItem.getSubtotal();
             
-            // Deduct stock statically or save via repo
-            if (product.getStock() != null && product.getStock() >= quantity) {
-                product.setStock(product.getStock() - quantity);
-                productRepository.save(product);
-            }
+            // Deduct stock (protected by @Transactional + @Version on Product)
+            product.setStock(product.getStock() - quantity);
+            productRepository.save(product);
         }
 
         order.setTotalAmount(totalAmount);
         return orderRepository.save(order);
     }
 
+    @Transactional(readOnly = true)
     public List<Order> getOrderHistory(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return orderRepository.findByUserOrderByDateDesc(user);
     }
 
+    @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
     }
